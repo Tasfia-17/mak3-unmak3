@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimax Integration Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #0C0A09;
+            color: #F5F2F0;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #333;
+            background: #1C1917;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #F5F2F0;
+            color: #0C0A09;
+            border: none;
+            cursor: pointer;
+            font-family: monospace;
+        }
+        button:hover {
+            background: #A8A29E;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #24211E;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success { color: #4ade80; }
+        .error { color: #ef4444; }
+        .warning { color: #fbbf24; }
+    </style>
+</head>
+<body>
+    <h1>MΔK3 UΝMΔK3 - Minimax Integration Test</h1>
+
+    <div class="test-section">
+        <h2>Environment Check</h2>
+        <button onclick="checkEnv()">Check Environment Variables</button>
+        <div id="env-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>1. Vision API (Object Detection)</h2>
+        <button onclick="testVision()">Test Vision Detection</button>
+        <div id="vision-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Chat API</h2>
+        <button onclick="testChat()">Test Chat</button>
+        <div id="chat-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Blueprint Generation</h2>
+        <button onclick="testBlueprint()">Test Blueprint</button>
+        <div id="blueprint-result" class="result"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://0ec90b57d6e95fcbda19832f.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJib2x0IiwicmVmIjoiMGVjOTBiNTdkNmU5NWZjYmRhMTk4MzJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4ODE1NzQsImV4cCI6MTc1ODg4MTU3NH0.9I8-U0x86Ak8t2DGaIk0HfvTSLsAyzdnz-Nw00mMkKw';
+        const MINIMAX_API_KEY = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiJUYXNmaWEgQ2hvd2RodXJ5IiwiVXNlck5hbWUiOiJOQSIsIkFjY291bnQiOiIiLCJTdWJqZWN0SUQiOiIyMDAyMDM1MDQ1NTYwMjI2MzEyIiwiUGhvbmUiOiIiLCJHcm91cElEIjoiMjAwMjAzNTA0NTU1NjAzNjEwNCIsIlBhZ2VOYW1lIjoiIiwiTWFpbCI6InRhc2ZpYWMyOUBnbWFpbC5jb20iLCJDcmVhdGVUaW1lIjoiMjAyNS0xMi0yMiAwMToxNzoyMyIsIlRva2VuVHlwZSI6MSwiaXNzIjoibWluaW1heCJ9.xObY33RTJj4OeEoGXSjKjYsk2ll--ro1UjRHrqHX1FKAInT2xydQA4KapXc3_IXl2_dwYJyROgoj4FM9N3KFTx-Tsa5UpZNoQh-Cf3C19uTDRKOZPOxvPMh7e1uB-oYGq1QTZMRbnl-cOH7Co5dzj4Kpdpvu4AFo46BCuh6vHVH4AFgRGFd0pqaQ7OeMMJSi9tji6XJec2f0N3SebVaMQ9V3REO_BygsuV6EgnuOw-QIUlaRANXt0iMB5sm3PSZYRnHkK06TeVZ6pqB6j7mqxzpThs5PSWtNb891rCu6yMxJLYJmdEAa9cEmMjBEP3LD93VxbUpJaFBFAsWqO13tuA';
+
+        // Sample base64 image of a simple object (fan icon)
+        const SAMPLE_IMAGE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+        function checkEnv() {
+            const result = document.getElementById('env-result');
+            result.innerHTML = '<span class="warning">Checking environment...</span>';
+
+            const checks = {
+                'SUPABASE_URL': SUPABASE_URL ? '✓' : '✗',
+                'SUPABASE_ANON_KEY': SUPABASE_ANON_KEY ? '✓' : '✗',
+                'MINIMAX_API_KEY': MINIMAX_API_KEY ? '✓' : '✗'
+            };
+
+            let output = '<span class="success">Environment Variables:</span>\n';
+            for (const [key, value] of Object.entries(checks)) {
+                output += `${key}: ${value}\n`;
+            }
+
+            result.innerHTML = output;
+        }
+
+        async function testChat() {
+            const result = document.getElementById('chat-result');
+            result.innerHTML = '<span class="warning">Testing Chat API...</span>';
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/minimax-chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        messages: [
+                            { role: 'system', content: 'You are a helpful assistant.' },
+                            { role: 'user', content: 'Say "Hello from Minimax!" in one sentence.' }
+                        ],
+                        apiKey: MINIMAX_API_KEY
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    result.innerHTML = `<span class="success">✓ Chat API Working!</span>\n\nResponse:\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.innerHTML = `<span class="error">✗ Chat API Failed</span>\n\nError:\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ Exception:</span>\n${error.message}`;
+            }
+        }
+
+        async function testVision() {
+            const result = document.getElementById('vision-result');
+            result.innerHTML = '<span class="warning">Testing Vision API...</span>';
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/minimax-vision`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        imageBase64: SAMPLE_IMAGE,
+                        apiKey: MINIMAX_API_KEY
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    result.innerHTML = `<span class="success">✓ Vision API Working!</span>\n\nDetected Objects:\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.innerHTML = `<span class="error">✗ Vision API Failed</span>\n\nError:\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ Exception:</span>\n${error.message}`;
+            }
+        }
+
+        async function testBlueprint() {
+            const result = document.getElementById('blueprint-result');
+            result.innerHTML = '<span class="warning">Testing Blueprint Generation...</span>';
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/minimax-blueprint`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        imageBase64: SAMPLE_IMAGE,
+                        objectName: 'ceiling fan',
+                        mode: 'disassembly',
+                        apiKey: MINIMAX_API_KEY
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    result.innerHTML = `<span class="success">✓ Blueprint API Working!</span>\n\nGenerated Blueprint:\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.innerHTML = `<span class="error">✗ Blueprint API Failed</span>\n\nError:\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ Exception:</span>\n${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

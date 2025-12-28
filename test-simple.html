@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Minimax Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #0C0A09;
+            color: #F5F2F0;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px 5px;
+            background: #F5F2F0;
+            color: #0C0A09;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #1C1917;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success { color: #4ade80; }
+        .error { color: #ef4444; }
+        input[type="file"] { margin: 10px 0; }
+        img { max-width: 300px; margin: 10px 0; border: 1px solid #333; }
+    </style>
+</head>
+<body>
+    <h1>Simple Vision Test</h1>
+
+    <h3>1. Upload Image</h3>
+    <input type="file" id="imageUpload" accept="image/*">
+    <br>
+    <img id="preview" style="display:none">
+
+    <h3>2. Test Vision API</h3>
+    <button onclick="testVision()">Detect Objects</button>
+    <div id="result" class="result"></div>
+
+    <script>
+        const SUPABASE_URL = 'https://0ec90b57d6e95fcbda19832f.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJib2x0IiwicmVmIjoiMGVjOTBiNTdkNmU5NWZjYmRhMTk4MzJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4ODE1NzQsImV4cCI6MTc1ODg4MTU3NH0.9I8-U0x86Ak8t2DGaIk0HfvTSLsAyzdnz-Nw00mMkKw';
+        const MINIMAX_API_KEY = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiJUYXNmaWEgQ2hvd2RodXJ5IiwiVXNlck5hbWUiOiJOQSIsIkFjY291bnQiOiIiLCJTdWJqZWN0SUQiOiIyMDAyMDM1MDQ1NTYwMjI2MzEyIiwiUGhvbmUiOiIiLCJHcm91cElEIjoiMjAwMjAzNTA0NTU1NjAzNjEwNCIsIlBhZ2VOYW1lIjoiIiwiTWFpbCI6InRhc2ZpYWMyOUBnbWFpbC5jb20iLCJDcmVhdGVUaW1lIjoiMjAyNS0xMi0yMiAwMzozMzoxMyIsIlRva2VuVHlwZSI6MSwiaXNzIjoibWluaW1heCJ9.FU5HMyYFlf8TBx4keypJ8Eos9NtQzBvL3Ibc4gc1ZvffzeSELBUDxPI468UAwUjnzpkg0B9SYUgkOQZdVr3pSX3_5ZcOrmOhNed5kI9t9APLzXnvcV89M9aYhkDzDQS2S4SlUj_uDDjEmyySyzF3X4sZWDvuliGMp-xNYR8ly24exUINcj1irsVder1mfDJZiATis11XsPnHqPGFYgWHXfBWbn94kWeOjXKWIpbNfbnTJ2EeniAYYVildXxRIJszCde61QTMGCce07aPiAxBUz8zMpTllj7JgkMiyzwxppIHgmZY9Z88-bJDuU4Pv-o5b_Q3ToUp-DI6ATGSIz2GRg';
+
+        let currentImageData = null;
+
+        document.getElementById('imageUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    currentImageData = event.target.result;
+                    document.getElementById('preview').src = currentImageData;
+                    document.getElementById('preview').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        async function testVision() {
+            const result = document.getElementById('result');
+
+            if (!currentImageData) {
+                result.innerHTML = '<span class="error">Please upload an image first</span>';
+                return;
+            }
+
+            result.innerHTML = 'Testing vision API...';
+
+            try {
+                console.log('Calling vision API');
+                console.log('Image size:', currentImageData.length);
+
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/minimax-vision`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        imageBase64: currentImageData,
+                        apiKey: MINIMAX_API_KEY
+                    })
+                });
+
+                console.log('Response status:', response.status);
+                const responseText = await response.text();
+                console.log('Response:', responseText);
+
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    result.innerHTML = `<span class="error">Failed to parse response</span>\n\n${responseText}`;
+                    return;
+                }
+
+                if (response.ok) {
+                    result.innerHTML = `<span class="success">SUCCESS!</span>\n\nDetected ${data.objects?.length || 0} objects:\n\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.innerHTML = `<span class="error">ERROR ${response.status}</span>\n\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                result.innerHTML = `<span class="error">Exception:</span>\n${error.message}\n\n${error.stack}`;
+            }
+        }
+    </script>
+</body>
+</html>

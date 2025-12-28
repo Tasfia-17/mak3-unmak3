@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimax Vision Detection Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #0C0A09;
+            color: #F5F2F0;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #333;
+            background: #1C1917;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #F5F2F0;
+            color: #0C0A09;
+            border: none;
+            cursor: pointer;
+            font-family: monospace;
+        }
+        button:hover {
+            background: #A8A29E;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #24211E;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        .success { color: #4ade80; }
+        .error { color: #ef4444; }
+        .warning { color: #fbbf24; }
+        input[type="file"] {
+            margin: 10px 0;
+        }
+        img {
+            max-width: 400px;
+            margin: 10px 0;
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Minimax Vision Detection Test</h1>
+
+    <div class="test-section">
+        <h2>Environment Check</h2>
+        <button onclick="checkEnv()">Check Environment Variables</button>
+        <div id="env-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Vision API with Sample Image</h2>
+        <p>Upload an image to test object detection:</p>
+        <input type="file" id="imageUpload" accept="image/*">
+        <br>
+        <img id="preview" style="display:none">
+        <br>
+        <button onclick="testVisionDetection()">Test Object Detection</button>
+        <div id="vision-result" class="result"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://0ec90b57d6e95fcbda19832f.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJib2x0IiwicmVmIjoiMGVjOTBiNTdkNmU5NWZjYmRhMTk4MzJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4ODE1NzQsImV4cCI6MTc1ODg4MTU3NH0.9I8-U0x86Ak8t2DGaIk0HfvTSLsAyzdnz-Nw00mMkKw';
+        const MINIMAX_API_KEY = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiJUYXNmaWEgQ2hvd2RodXJ5IiwiVXNlck5hbWUiOiJOQSIsIkFjY291bnQiOiIiLCJTdWJqZWN0SUQiOiIyMDAyMDM1MDQ1NTYwMjI2MzEyIiwiUGhvbmUiOiIiLCJHcm91cElEIjoiMjAwMjAzNTA0NTU1NjAzNjEwNCIsIlBhZ2VOYW1lIjoiIiwiTWFpbCI6InRhc2ZpYWMyOUBnbWFpbC5jb20iLCJDcmVhdGVUaW1lIjoiMjAyNS0xMi0yMiAwMToxNzoyMyIsIlRva2VuVHlwZSI6MSwiaXNzIjoibWluaW1heCJ9.xObY33RTJj4OeEoGXSjKjYsk2ll--ro1UjRHrqHX1FKAInT2xydQA4KapXc3_IXl2_dwYJyROgoj4FM9N3KFTx-Tsa5UpZNoQh-Cf3C19uTDRKOZPOxvPMh7e1uB-oYGq1QTZMRbnl-cOH7Co5dzj4Kpdpvu4AFo46BCuh6vHVH4AFgRGFd0pqaQ7OeMMJSi9tji6XJec2f0N3SebVaMQ9V3REO_BygsuV6EgnuOw-QIUlaRANXt0iMB5sm3PSZYRnHkK06TeVZ6pqB6j7mqxzpThs5PSWtNb891rCu6yMxJLYJmdEAa9cEmMjBEP3LD93VxbUpJaFBFAsWqO13tuA';
+
+        let currentImageData = null;
+
+        // Handle image upload
+        document.getElementById('imageUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    currentImageData = event.target.result;
+                    const preview = document.getElementById('preview');
+                    preview.src = currentImageData;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function checkEnv() {
+            const result = document.getElementById('env-result');
+            result.innerHTML = '<span class="warning">Checking environment...</span>';
+
+            const checks = {
+                'SUPABASE_URL': SUPABASE_URL ? '✓' : '✗',
+                'SUPABASE_ANON_KEY': SUPABASE_ANON_KEY ? '✓' : '✗',
+                'MINIMAX_API_KEY': MINIMAX_API_KEY ? '✓' : '✗'
+            };
+
+            let output = '<span class="success">Environment Variables:</span>\n';
+            for (const [key, value] of Object.entries(checks)) {
+                output += `${key}: ${value}\n`;
+            }
+
+            result.innerHTML = output;
+        }
+
+        async function testVisionDetection() {
+            const result = document.getElementById('vision-result');
+
+            if (!currentImageData) {
+                result.innerHTML = '<span class="error">Please upload an image first</span>';
+                return;
+            }
+
+            result.innerHTML = '<span class="warning">Testing Vision Detection...</span>';
+
+            try {
+                console.log('Calling vision API...');
+                console.log('Image data length:', currentImageData.length);
+
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/minimax-vision`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        imageBase64: currentImageData,
+                        apiKey: MINIMAX_API_KEY
+                    })
+                });
+
+                console.log('Response status:', response.status);
+                console.log('Response headers:', [...response.headers.entries()]);
+
+                const responseText = await response.text();
+                console.log('Response text:', responseText);
+
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    result.innerHTML = `<span class="error">✗ Failed to parse response</span>\n\nRaw response:\n${responseText}`;
+                    return;
+                }
+
+                if (response.ok) {
+                    result.innerHTML = `<span class="success">✓ Vision API Working!</span>\n\nResponse:\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.innerHTML = `<span class="error">✗ Vision API Failed (${response.status})</span>\n\nError:\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                console.error('Exception:', error);
+                result.innerHTML = `<span class="error">✗ Exception:</span>\n${error.message}\n\nStack:\n${error.stack}`;
+            }
+        }
+    </script>
+</body>
+</html>

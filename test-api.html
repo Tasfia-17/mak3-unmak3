@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimax API Test - Simplified</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #0C0A09;
+            color: #F5F2F0;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #333;
+            background: #1C1917;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #F5F2F0;
+            color: #0C0A09;
+            border: none;
+            cursor: pointer;
+            font-family: monospace;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #A8A29E;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #24211E;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+            font-size: 11px;
+        }
+        .success { color: #4ade80; }
+        .error { color: #ef4444; }
+        .warning { color: #fbbf24; }
+        input[type="file"] {
+            margin: 10px 0;
+            color: #F5F2F0;
+        }
+        img {
+            max-width: 400px;
+            margin: 10px 0;
+            border: 1px solid #333;
+        }
+        h1 {
+            color: #F5F2F0;
+            text-align: center;
+        }
+        h2 {
+            color: #A8A29E;
+        }
+    </style>
+</head>
+<body>
+    <h1>Minimax API Integration Test</h1>
+
+    <div class="test-section">
+        <h2>1. Environment Check</h2>
+        <button onclick="checkEnv()">Check Configuration</button>
+        <div id="env-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Object Detection Test</h2>
+        <p>Upload an image to test object detection:</p>
+        <input type="file" id="imageUpload" accept="image/*">
+        <br>
+        <img id="preview" style="display:none">
+        <br>
+        <button id="detectBtn" onclick="testObjectDetection()" disabled>Detect Objects</button>
+        <div id="detection-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Blueprint Generation Test</h2>
+        <button id="blueprintBtn" onclick="testBlueprintGeneration()" disabled>Generate Blueprint</button>
+        <div id="blueprint-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Chat Assistant Test</h2>
+        <button onclick="testChat()">Test Chat</button>
+        <div id="chat-result" class="result"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://0ec90b57d6e95fcbda19832f.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJib2x0IiwicmVmIjoiMGVjOTBiNTdkNmU5NWZjYmRhMTk4MzJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4ODE1NzQsImV4cCI6MTc1ODg4MTU3NH0.9I8-U0x86Ak8t2DGaIk0HfvTSLsAyzdnz-Nw00mMkKw';
+        const MINIMAX_API_KEY = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiJUYXNmaWEgQ2hvd2RodXJ5IiwiVXNlck5hbWUiOiJOQSIsIkFjY291bnQiOiIiLCJTdWJqZWN0SUQiOiIyMDAyMDM1MDQ1NTYwMjI2MzEyIiwiUGhvbmUiOiIiLCJHcm91cElEIjoiMjAwMjAzNTA0NTU1NjAzNjEwNCIsIlBhZ2VOYW1lIjoiIiwiTWFpbCI6InRhc2ZpYWMyOUBnbWFpbC5jb20iLCJDcmVhdGVUaW1lIjoiMjAyNS0xMi0yMiAwMzozMzoxMyIsIlRva2VuVHlwZSI6MSwiaXNzIjoibWluaW1heCJ9.FU5HMyYFlf8TBx4keypJ8Eos9NtQzBvL3Ibc4gc1ZvffzeSELBUDxPI468UAwUjnzpkg0B9SYUgkOQZdVr3pSX3_5ZcOrmOhNed5kI9t9APLzXnvcV89M9aYhkDzDQS2S4SlUj_uDDjEmyySyzF3X4sZWDvuliGMp-xNYR8ly24exUINcj1irsVder1mfDJZiATis11XsPnHqPGFYgWHXfBWbn94kWeOjXKWIpbNfbnTJ2EeniAYYVildXxRIJszCde61QTMGCce07aPiAxBUz8zMpTllj7JgkMiyzwxppIHgmZY9Z88-bJDuU4Pv-o5b_Q3ToUp-DI6ATGSIz2GRg';
+
+        let currentImageData = null;
+        let detectedObjects = [];
+
+        // Handle image upload
+        document.getElementById('imageUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    currentImageData = event.target.result;
+                    const preview = document.getElementById('preview');
+                    preview.src = currentImageData;
+                    preview.style.display = 'block';
+                    document.getElementById('detectBtn').disabled = false;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function checkEnv() {
+            const result = document.getElementById('env-result');
+            result.innerHTML = '<span class="warning">Checking configuration...</span>';
+
+            const checks = {
+                'SUPABASE_URL': SUPABASE_URL ? 'Set' : 'Missing',
+                'SUPABASE_ANON_KEY': SUPABASE_ANON_KEY ? 'Set' : 'Missing',
+                'MINIMAX_API_KEY': MINIMAX_API_KEY ? 'Set' : 'Missing'
+            };
+
+            let output = '<span class="success">Configuration Status:</span>\n\n';
+            for (const [key, value] of Object.entries(checks)) {
+                const status = value === 'Set' ? '<span class="success">✓</span>' : '<span class="error">✗</span>';
+                output += `${status} ${key}: ${value}\n`;
+            }
+
+            const allSet = Object.values(checks).every(v => v === 'Set');
+            if (allSet) {
+                output += '\n<span class="success">All configuration values are set correctly.</span>';
+            } else {
+                output += '\n<span class="error">Some configuration values are missing.</span>';
+            }
+
+            result.innerHTML = output;
+        }
+
+        async function testObjectDetection() {
+            const result = document.getElementById('detection-result');
+            const btn = document.getElementById('detectBtn');
+
+            if (!currentImageData) {
+                result.innerHTML = '<span class="error">Please upload an image first</span>';
+                return;
+            }
+
+            btn.disabled = true;
+            result.innerHTML = '<span class="warning">Testing Object Detection (this may take 10-15 seconds)...</span>';
+
+            try {
+                console.log('Calling vision API...');
+                console.log('Image data length:', currentImageData.length);
+
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/minimax-vision`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        imageBase64: currentImageData,
+                        apiKey: MINIMAX_API_KEY
+                    })
+                });
+
+                console.log('Response status:', response.status);
+
+                const responseText = await response.text();
+                console.log('Response:', responseText);
+
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    result.innerHTML = `<span class="error">Failed to parse response</span>\n\nRaw response:\n${responseText}`;
+                    btn.disabled = false;
+                    return;
+                }
+
+                if (response.ok) {
+                    detectedObjects = data.objects || [];
+                    result.innerHTML = `<span class="success">Object Detection Successful</span>\n\nDetected ${detectedObjects.length} object(s):\n\n${JSON.stringify(data, null, 2)}`;
+
+                    if (detectedObjects.length > 0) {
+                        document.getElementById('blueprintBtn').disabled = false;
+                    }
+                } else {
+                    result.innerHTML = `<span class="error">Object Detection Failed (${response.status})</span>\n\nError:\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                console.error('Exception:', error);
+                result.innerHTML = `<span class="error">Exception occurred:</span>\n${error.message}\n\nStack:\n${error.stack}`;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function testBlueprintGeneration() {
+            const result = document.getElementById('blueprint-result');
+            const btn = document.getElementById('blueprintBtn');
+
+            if (!currentImageData || detectedObjects.length === 0) {
+                result.innerHTML = '<span class="error">Please detect objects first</span>';
+                return;
+            }
+
+            btn.disabled = true;
+            const firstObject = detectedObjects[0];
+            result.innerHTML = `<span class="warning">Generating blueprint for "${firstObject.name}" (this may take 15-20 seconds)...</span>`;
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/minimax-blueprint`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        imageBase64: currentImageData,
+                        objectName: firstObject.name,
+                        mode: 'disassembly',
+                        apiKey: MINIMAX_API_KEY
+                    })
+                });
+
+                const responseText = await response.text();
+                let data;
+
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    result.innerHTML = `<span class="error">Failed to parse response</span>\n\nRaw response:\n${responseText}`;
+                    btn.disabled = false;
+                    return;
+                }
+
+                if (response.ok) {
+                    result.innerHTML = `<span class="success">Blueprint Generation Successful</span>\n\nGenerated blueprint:\n\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.innerHTML = `<span class="error">Blueprint Generation Failed (${response.status})</span>\n\nError:\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                console.error('Exception:', error);
+                result.innerHTML = `<span class="error">Exception occurred:</span>\n${error.message}`;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function testChat() {
+            const result = document.getElementById('chat-result');
+            result.innerHTML = '<span class="warning">Testing Chat API...</span>';
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/minimax-chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        messages: [
+                            { role: 'system', content: 'You are a helpful assistant.' },
+                            { role: 'user', content: 'Say "Minimax API is working!" in one sentence.' }
+                        ],
+                        apiKey: MINIMAX_API_KEY
+                    })
+                });
+
+                const responseText = await response.text();
+                let data;
+
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    result.innerHTML = `<span class="error">Failed to parse response</span>\n\nRaw response:\n${responseText}`;
+                    return;
+                }
+
+                if (response.ok) {
+                    result.innerHTML = `<span class="success">Chat API Working</span>\n\nResponse:\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.innerHTML = `<span class="error">Chat API Failed (${response.status})</span>\n\nError:\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                result.innerHTML = `<span class="error">Exception occurred:</span>\n${error.message}`;
+            }
+        }
+
+        // Auto-check environment on page load
+        window.onload = function() {
+            checkEnv();
+        };
+    </script>
+</body>
+</html>
